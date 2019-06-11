@@ -24,7 +24,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-*.lock
+*.LOCK
 MANIFEST
 
 # PyInstaller

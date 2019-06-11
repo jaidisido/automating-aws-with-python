@@ -1,3 +1,11 @@
+#!/usr/bin/python
+"""
+Webotron script to sync S3 directory
+"""
+
+from pathlib import Path
+import mimetypes
+
 import boto3
 from botocore.exceptions import ClientError
 import click
@@ -62,6 +70,38 @@ def setup_bucket(bucket):
     pol.put(Policy=policy)
 
     return
+
+
+def upload_file(s3_bucket, path, key):
+    """Uploads file to S3 bucket."""
+    content_type = mimetypes.guess_type(key)[0] or 'text/plain'
+
+    s3_bucket.upload_file(
+        path,
+        key,
+        ExtraArgs={
+            'ContentType': content_type
+        }
+    )
+
+
+@cli.command('sync')
+@click.argument('pathname', type=click.Path(exists=True))
+@click.argument('bucket')
+def sync(pathname, bucket):
+    """Sync contents of pathname to bucket."""
+    s3_bucket = s3.Bucket(bucket)
+
+    root = Path(pathname).expanduser().resolve()
+
+    def handle_directory(target):
+        for p in target.iterdir():
+            if p.is_dir():
+                handle_directory(p)
+            if p.is_file():
+                upload_file(s3_bucket, str(p), str(p.relative_to(root)).replace("\\", "/"))
+
+    handle_directory(root)
 
 
 if __name__ == '__main__':
