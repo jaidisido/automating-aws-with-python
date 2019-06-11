@@ -1,0 +1,1 @@
+"""Treat webotron as package."""

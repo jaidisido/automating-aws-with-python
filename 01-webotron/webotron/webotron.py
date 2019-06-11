@@ -1,29 +1,33 @@
 #!/usr/bin/python
-"""
-Webotron script to sync S3 directory
-"""
+# -*- coding: utf-8 -*-
 
-from pathlib import Path
-import mimetypes
+"""Webotron: Automatically sync S3 buckets.
+
+Webotron automates the process of syncing S3 buckets.
+- Create AWS S3 Bucket
+- Configure and set it up
+- Sync local files
+"""
 
 import boto3
-from botocore.exceptions import ClientError
 import click
 
+from bucket import BucketManager
+
 session = boto3.Session(profile_name='alexa-info-isengard')
-s3 = session.resource('s3')
+bucket_manager = BucketManager(session)
 
 
 @click.group()
 def cli():
-    """Webotron deploys websites to AWS"""
+    """Webotron syncs files to S3."""
     pass
 
 
 @cli.command('list-buckets')
 def list_buckets():
     """List all s3 buckets."""
-    for bucket in s3.buckets.all():
+    for bucket in bucket_manager.all_buckets():
         print(bucket)
 
 
@@ -31,7 +35,7 @@ def list_buckets():
 @click.argument('bucket')
 def list_bucket_objects(bucket):
     """List objects in an S3 bucket."""
-    for obj in s3.Bucket(bucket).objects.all():
+    for obj in bucket_manager.all_objects(bucket):
         print(obj)
 
 
@@ -39,50 +43,8 @@ def list_bucket_objects(bucket):
 @click.argument('bucket')
 def setup_bucket(bucket):
     """Create and configure S3 bucket."""
-    s3_bucket = None
-
-    try:
-        s3_bucket = s3.create_bucket(
-            Bucket=bucket,
-            CreateBucketConfiguration={'LocationConstraint': session.region_name}
-        )
-    except ClientError as error:
-        if error.response['Error']['Code'] == 'BucketAlreadyOwnedByYou':
-            s3_bucket = s3.Bucket(bucket)
-        else:
-            raise error
-
-    policy = """
-    {
-      "Version": "2012-10-17",
-      "Statement": [{
-          "Sid": "GetS3Object",
-          "Action": ["s3:GetObject"],
-          "Effect": "Allow",
-          "Resource": "arn:aws:s3:::%s/*",
-          "Principal": {"AWS": ["arn:aws:iam::718896461338:user/jaidi"]}
-        }]
-    }
-    """ % s3_bucket.name
-    policy = policy.strip()
-
-    pol = s3_bucket.Policy()
-    pol.put(Policy=policy)
-
-    return
-
-
-def upload_file(s3_bucket, path, key):
-    """Uploads file to S3 bucket."""
-    content_type = mimetypes.guess_type(key)[0] or 'text/plain'
-
-    s3_bucket.upload_file(
-        path,
-        key,
-        ExtraArgs={
-            'ContentType': content_type
-        }
-    )
+    s3_bucket = bucket_manager.init_bucket(bucket)
+    bucket_manager.set_policy(s3_bucket)
 
 
 @cli.command('sync')
@@ -90,18 +52,7 @@ def upload_file(s3_bucket, path, key):
 @click.argument('bucket')
 def sync(pathname, bucket):
     """Sync contents of pathname to bucket."""
-    s3_bucket = s3.Bucket(bucket)
-
-    root = Path(pathname).expanduser().resolve()
-
-    def handle_directory(target):
-        for p in target.iterdir():
-            if p.is_dir():
-                handle_directory(p)
-            if p.is_file():
-                upload_file(s3_bucket, str(p), str(p.relative_to(root)).replace("\\", "/"))
-
-    handle_directory(root)
+    bucket_manager.sync_bucket(pathname, bucket)
 
 
 if __name__ == '__main__':
