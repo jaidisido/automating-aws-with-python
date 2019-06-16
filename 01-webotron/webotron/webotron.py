@@ -12,7 +12,7 @@ Webotron automates the process of syncing S3 buckets.
 import boto3
 import click
 
-from bucket import BucketManager
+from webotron.bucket import BucketManager
 
 
 session = None
