@@ -1,0 +1,7 @@
+{
+	"videolyzer":{
+		"profile": "alexa-info-isengard",
+		"videos_bucket": "aws-rekognition-automating-python",
+		"videos_table": ""
+	}
+}
