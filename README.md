@@ -14,3 +14,8 @@ Webotron currently has the following features:
 - List contents of a bucket
 - Set up and configure S3 bucket
 - Sync files to bucket
+- Set AWS config profile
+
+## 03-videolizer
+
+Videolizer automates video analysis using the Rekognition AWS service
